@@ -1,0 +1,315 @@
+<html>
+	<head> <!-- {{{ -->
+		<title>mpd</title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+		<!-- Optional theme -->
+		<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css">
+
+		<style type="text/css">
+			#library {
+				height: 400px;
+				overflow: auto;
+			}
+			.top10 { margin-top:10px; }
+			.bottom10 { margin-bottom:10px; }
+		</style>
+	</head> <!-- }}} -->
+	<body>
+		<div class="container theme-showcase">
+			<div class="page-header">
+				<h1>mpd</h1>
+				<div class="row">
+					<div class="col-sm-11 bottom10">
+						<span class="btn-toolbar" id="controls1"></span>
+					</div> <!-- col-sm -->
+					<div class="col-sm-1">
+						<span id="ajaxloader"><img src="ajax-loader.gif"/></span>
+					</div> <!-- col-sm -->
+					<div class="col-sm-8" id="divaroundresponse">
+					<pre>
+						<span id="responsecontainer" class="small">
+						</span>
+					</pre>
+					</div> <!-- col-sm -->
+					<div class="col-sm-4">
+						<p id="library"></p>
+					</div> <!-- col-sm -->
+				</div> <!-- class="row" -->
+			</div> <!-- class="page-header" -->
+		</div> <!-- class="container theme-showcase" -->
+
+		 <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+		<script src="https://code.jquery.com/jquery.js"></script>
+		<!-- Include all compiled plugins (below), or include individual files as needed 
+		<script src="js/bootstrap.min.js"></script-->
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+		<!--script src="http://code.jquery.com/jquery-latest.js"></script -->
+
+<script> // {{{
+	function getURLParameter(name) {
+		return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20')) || null;
+	}
+
+	var q = getURLParameter('q');
+
+	var ajaxloader = $("#ajaxloader");
+
+	var file = "mpd-cgi.sh?q=tail";
+	var library_url = "mpd.library.txt";
+	var outputs_url = "mpd.out.txt";
+
+	var file_getstatus = "mpd-cgi.sh?q=mtime";
+	var container = $("#responsecontainer");
+	var interval = null;
+	var prev_mtime = null;
+
+	var controls1 = '#controls1';
+	var myAudio;
+
+	String.prototype.startsWith = function(needle) {
+		return(this.indexOf(needle) == 0);
+	};
+
+	function save(line) {
+		container.append("<div>"+line+"</div>");
+	}
+
+	function dumpFile() {
+		$.get(file, function(txt){
+			var lines = txt.split("\n");
+			container.empty();
+			for (var i = 0, len = lines.length; i < len; i++) {
+				var line = lines[i];
+				if (line !== '') {
+					save(line);
+				}
+			}
+			ajaxloader.hide();
+			//$('html, body').scrollTop( $(document).height() );
+		}, null, 'text');
+	}
+
+	function lastNonEmptyLine(lines) { // {{{
+		var lastline = '';
+		for (var i = 0, len = lines.length; i < len; i++) {
+			if (lines[i] !== '') {
+				lastline = lines[i];
+			}
+		}
+		return lastline;
+	} // }}}
+
+	function dumpFileIfModified(count) { // {{{
+		clearInterval(interval);
+		$.get(file_getstatus, function(txt){
+			var mtime = lastNonEmptyLine(txt.split("\n"));
+			if (prev_mtime !== mtime) {
+				dumpFile();
+				prev_mtime = mtime;
+				//console.log(mtime);
+				interval = setInterval(function () {dumpFileIfModified(0);}, 200);
+			} else {
+				interval = setInterval(function () {dumpFileIfModified(count+1);}, 2000);
+				//console.log('the same');
+			}
+		}, null, 'text');
+	} // }}}
+
+	function makeAudioListener(audioObject, eventName) {
+		audioObject.addEventListener(eventName, function() {
+				console.log('--- '+eventName);
+				}, false);
+	}
+
+	function sendCommand(cmd) {
+		ajaxloader.show();
+		$.get('mpd-cgi.sh?q=' + cmd, function(txt){
+		}, null, 'text');
+	}
+
+	function playFile(file) {
+		sendCommand('setplaylist&f='+file);
+	}
+
+	function dumpLibrary() { // {{{
+		var library = $('#library');
+
+		// force refresh file from webserver
+		$.get(library_url + '?' + Math.random(), function(txt){
+			var lines = txt.split("\n");
+			library.empty();
+			for (var i = 0, len = lines.length; i < len; i++) {
+				var lastline = lines[i];
+				var fname = lastline.replace(/^.*(\\|\/|\:)/, '');
+				if (lastline !== '') {
+					$('<a>',{
+						text: fname,
+						href: 'javascript:playFile("' + lastline + '")',
+						class: 'small text-muted btn-block'
+					})
+					.appendTo($('<div>').appendTo(library));
+				}
+			}
+		}, null, 'text');
+	} // }}}
+
+	interval = setInterval(function () {dumpFileIfModified();}, 100);
+	setTimeout(function () { dumpLibrary();}, 1500);
+
+	function glyphize(element, title) { // {{{
+		if (title.startsWith('glyphicon-')) {
+			var sp = $('<span>', {
+					class: "glyphicon " + title
+					});
+			sp.appendTo(element);
+			return element;
+		} else {
+			return element.text(title);
+		}
+	} // }}}
+
+	function createButton(cmd, desc) { // {{{
+		if (desc == null || desc === "") {
+			desc = cmd;
+		}
+		var a = $('<a>', {
+				href: 'javascript:sendCommand("' + cmd + '")',
+				class: "btn btn-info bottom10",
+				type: "button"
+			});
+		return glyphize(a, desc);
+	} // }}}
+
+	function createButtonGroup() { // {{{
+		return $('<div>', {
+			class: "btn-group"
+			});
+	} // }}}
+
+	function createDropdown(name, elements) { // {{{
+		var btnGroup = $('<div>', {
+			class: "btn-group"
+			});
+		var btnDropdown = $('<button>', {
+				//text: name,
+				type: "button",
+				class: "btn btn-info dropdown-toggle bottom10",
+				'data-toggle': "dropdown",
+				});
+		btnDropdown = glyphize(btnDropdown, name);
+		var caret = $('<span>', {class: "caret"}).appendTo(btnDropdown);
+		var ul = $('<ul>', {
+				class: "dropdown-menu",
+				role: "menu"
+				});
+		for (var i = 0; i < elements.length; i++) {
+			elements[i].appendTo(ul);
+		}
+
+		btnDropdown.appendTo(btnGroup);
+		ul.appendTo(btnGroup);
+
+		return btnGroup;
+	} // }}}
+
+	function createDropdownElement(cmd, desc) { // {{{
+		if (desc == null || desc === "") {
+			desc = cmd;
+		}
+		var li = $('<li>');
+		var el = $('<a>',{
+			text: desc,
+			href: 'javascript:sendCommand("' + cmd + '")',
+		});
+		el.appendTo(li);
+		return li;
+	} // }}}
+
+	$('<a>',{
+		text: 'Click to refresh.',
+		href: window.location.href,
+	}).appendTo('.container');
+
+	// basic {{{
+		var btnsPlay = createButtonGroup();
+		btnsPlay.appendTo(controls1);
+
+		createButton('pause', 'glyphicon-pause').appendTo(btnsPlay);
+		createButton('play', 'glyphicon-play').appendTo(btnsPlay);
+		createButton('previous', 'glyphicon-fast-backward').appendTo(btnsPlay);
+		createButton('next', 'glyphicon-fast-forward').appendTo(btnsPlay);
+		createButton('seek backward', 'glyphicon-backward').appendTo(btnsPlay);
+		createButton('seek forward', 'glyphicon-forward').appendTo(btnsPlay);
+	// }}}
+
+	// volume {{{
+		var btnsVolume = createButtonGroup();
+		btnsVolume.appendTo(controls1);
+
+		createButton('volume up', 'glyphicon-volume-up').appendTo(btnsVolume);
+		createButton('volume down', 'glyphicon-volume-down').appendTo(btnsVolume);
+
+		createDropdown('glyphicon-bullhorn', [
+				createDropdownElement('volume 0', '0'),
+				createDropdownElement('volume 10', '10'),
+				createDropdownElement('volume 20', '20'),
+				createDropdownElement('volume 30', '30'),
+				createDropdownElement('volume 40', '40'),
+				createDropdownElement('volume 50', '50'),
+				createDropdownElement('volume 60', '60'),
+				createDropdownElement('volume 70', '70'),
+				createDropdownElement('volume 80', '80'),
+				createDropdownElement('volume 90', '90'),
+				createDropdownElement('volume 100', '100'),
+				]).appendTo(btnsVolume);
+	// }}}
+
+	// debug {{{
+		createDropdown('glyphicon-tower', [
+				createDropdownElement('playlist', 'Playlist'),
+				createDropdownElement('info', 'Information'),
+				createDropdownElement('clear log', 'Clear output'),
+				createDropdownElement('echo', 'Say hello')
+				]).appendTo(controls1);
+	// }}}
+
+	// adv {{{
+		createDropdown('glyphicon-wrench', [
+			createDropdownElement('library refresh', ''),
+			createDropdownElement('autonext on', ''),
+			createDropdownElement('autonext off', ''),
+			createDropdownElement('repeat on', ''),
+			createDropdownElement('repeat off', ''),
+			createDropdownElement('shuffle on', ''),
+			createDropdownElement('shuffle off', '')
+			]).appendTo(controls1);
+	//}}}
+
+	
+	function dumpOutputs() { // {{{
+		$.get(outputs_url + '?' + Math.random(), function(txt){
+			var lines = txt.split("\n");
+			var btnsOutput = createButtonGroup();
+			btnsOutput.appendTo(controls1);
+			var elements = new Array();
+			for (var i = 0, len = lines.length; i < len; i++) {
+				var lastline = lines[i];
+				if (lastline !== '') {
+					elements.push(createDropdownElement('enable ' + (i+1), lastline + ' on'));
+					elements.push(createDropdownElement('disable ' + (i+1), lastline + ' off'));
+				}
+			}
+			createDropdown('glyphicon-filter', elements).appendTo(controls1);
+		}, null, 'text');
+	} 
+	dumpOutputs();
+	// }}}
+
+</script> <!-- }}} -->
+</body>
+</html>
+
