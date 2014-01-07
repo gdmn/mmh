@@ -15,11 +15,11 @@
 			}
 			.top10 { margin-top:10px; }
 			.bottom10 { margin-bottom:10px; }
+			.btn { height: 40px; width: 50px; }
 		</style>
 	</head> <!-- }}} -->
 	<body>
 		<div class="container theme-showcase">
-			<div class="page-header">
 				<h1>mpd</h1>
 				<div class="row">
 					<div class="col-sm-11 bottom10">
@@ -38,7 +38,6 @@
 						<p id="library"></p>
 					</div> <!-- col-sm -->
 				</div> <!-- class="row" -->
-			</div> <!-- class="page-header" -->
 		</div> <!-- class="container theme-showcase" -->
 
 		 <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
@@ -89,7 +88,6 @@
 				}
 			}
 			ajaxloader.hide();
-			//$('html, body').scrollTop( $(document).height() );
 		}, null, 'text');
 	}
 
@@ -176,10 +174,14 @@
 		if (desc == null || desc === "") {
 			desc = cmd;
 		}
-		var a = $('<a>', {
+		var a = $('<button>', {
 				href: 'javascript:sendCommand("' + cmd + '")',
 				class: "btn btn-info bottom10",
-				type: "button"
+				type: "button",
+				'data-toggle': "popover",
+				'data-placement': "bottom",
+				title: cmd,
+				'data-container': "body"
 			});
 		return glyphize(a, desc);
 	} // }}}
@@ -242,8 +244,13 @@
 		createButton('play', 'glyphicon-play').appendTo(btnsPlay);
 		createButton('previous', 'glyphicon-fast-backward').appendTo(btnsPlay);
 		createButton('next', 'glyphicon-fast-forward').appendTo(btnsPlay);
-		createButton('seek backward', 'glyphicon-backward').appendTo(btnsPlay);
-		createButton('seek forward', 'glyphicon-forward').appendTo(btnsPlay);
+	// }}}
+
+	// basic {{{
+		var btnsSeek = createButtonGroup();
+		btnsSeek.appendTo(controls1);
+		createButton('seek backward', 'glyphicon-backward').appendTo(btnsSeek);
+		createButton('seek forward', 'glyphicon-forward').appendTo(btnsSeek);
 	// }}}
 
 	// volume {{{
@@ -308,7 +315,9 @@
 	} 
 	dumpOutputs();
 	// }}}
-
+	$(function () {
+		$('[data-toggle="popover"]').tooltip();
+	});
 </script> <!-- }}} -->
 </body>
 </html>
