@@ -173,14 +173,10 @@
 		if (desc == null || desc === "") {
 			desc = cmd;
 		}
-		var a = $('<button>', {
+		var a = $('<a>', {
 				href: 'javascript:sendCommand("' + cmd + '")',
 				class: "btn btn-lg btn-info bottom10",
 				type: "button",
-				'data-toggle': "popover",
-				'data-placement': "bottom",
-				title: cmd,
-				'data-container': "body"
 			});
 		return glyphize(a, desc);
 	} // }}}
@@ -314,9 +310,6 @@
 	} 
 	dumpOutputs();
 	// }}}
-	$(function () {
-		$('[data-toggle="popover"]').tooltip();
-	});
 </script> <!-- }}} -->
 </body>
 </html>
