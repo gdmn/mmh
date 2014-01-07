@@ -15,7 +15,6 @@
 			}
 			.top10 { margin-top:10px; }
 			.bottom10 { margin-bottom:10px; }
-			.btn { height: 40px; width: 50px; }
 		</style>
 	</head> <!-- }}} -->
 	<body>
@@ -176,7 +175,7 @@
 		}
 		var a = $('<button>', {
 				href: 'javascript:sendCommand("' + cmd + '")',
-				class: "btn btn-info bottom10",
+				class: "btn btn-lg btn-info bottom10",
 				type: "button",
 				'data-toggle': "popover",
 				'data-placement': "bottom",
@@ -199,7 +198,7 @@
 		var btnDropdown = $('<button>', {
 				//text: name,
 				type: "button",
-				class: "btn btn-info dropdown-toggle bottom10",
+				class: "btn btn-lg btn-info dropdown-toggle bottom10",
 				'data-toggle': "dropdown",
 				});
 		btnDropdown = glyphize(btnDropdown, name);
